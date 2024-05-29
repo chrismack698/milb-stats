@@ -1,0 +1,58 @@
+import requests
+import pandas
+from bs4 import BeautifulSoup
+import json
+import re
+import gspread
+from gspread_dataframe import set_with_dataframe
+from google.oauth2.service_account import Credentials
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+import os
+
+def handler(pd: "pipedream"):
+  var = ['1', '2', '3', '4']
+
+  for i in var:
+      hit_url = 'https://www.fangraphs.com/api/leaders/minor-league/data?pos=all&level={i}&lg=2,4,5,6,7,8,9,10,11,14,12,13,15,16,17,18,30,32,33&stats=bat&qual=y&type=0&team=&season=2024&seasonEnd=2024&org=&ind=0&splitTeam=false'
+      hit_stats = requests.get(hit_url)
+      hit_minor_league = BeautifulSoup(hit_stats.content, 'html.parser')
+      hit_minor_league = json.loads(hit_minor_league.text)
+      minor_league_hit_df = pandas.DataFrame(hit_minor_league)
+
+  for i in var:
+    pit_url = 'https://www.fangraphs.com/api/leaders/minor-league/data?pos=all&level={i}&lg=2,4,5,6,7,8,9,10,11,14,12,13,15,16,17,18,30,32,33&stats=pit&qual=10&type=0&team=&season=2024&seasonEnd=2024&org=&ind=0&splitTeam=false'
+    pit_stats = requests.get(pit_url)
+    pit_minor_league = BeautifulSoup(pit_stats.content, 'html.parser')
+    pit_minor_league = json.loads(pit_minor_league.text)
+    minor_league_pit_df = pandas.DataFrame(pit_minor_league)
+
+  scopes = ['https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/drive']
+
+  creds = json.loads(os.environ["Google_Credentials"])
+
+  credentials = Credentials.from_service_account_info(creds, scopes=scopes)
+
+  gc = gspread.authorize(credentials)
+
+  gauth = GoogleAuth()
+  drive = GoogleDrive(gauth)
+
+  # open a google sheet
+  gs = gc.open_by_url({my URL here})
+  # select a work sheet from its name
+  worksheet1 = gs.worksheet('Hitters')
+  worksheet2 = gs.worksheet('Pitchers')
+
+
+  # write to dataframe
+  worksheet1.clear()
+  set_with_dataframe(worksheet=worksheet1, dataframe=minor_league_hit_df, include_index=False,
+  include_column_header=True, resize=True)
+
+  worksheet2.clear()
+  set_with_dataframe(worksheet=worksheet2, dataframe=minor_league_pit_df, include_index=False,
+  include_column_header=True, resize=True)
+
+  return {"message": "data written to {my URL here}"}
